@@ -12,7 +12,7 @@ class WorkedHoursMetricGeneratorService {
     String gemsbbUrl = Holders.grailsApplication.config.getProperty('metricGenerator.gemsbbUrl')
 
     private def getPlansFromBlackboard(String projectId) {
-        def resp = restClient.get("${gemsbbUrl}/plans")//?projectId=${projectId}")
+        def resp = restClient.get("${gemsbbUrl}/plans?projectId=${projectId}")
 
         if(resp.getStatusCode() != HttpStatus.OK) {
             throw new Exception("Error al obtener el registro del plan del Blackboard. HttpStatusCode: ${resp.getStatusCode()}")
@@ -31,15 +31,30 @@ class WorkedHoursMetricGeneratorService {
         resp.json
     }
 
+    private def getMetricFromBloackboard(metricName, projectId, month, year) {
+        def params = "?name=${metricName}&projectId=${projectId}&month=${month}&year=${year}"
+        def resp = restClient.get("${gemsbbUrl}/projectMetrics${params}")
+
+        if(resp.getStatusCode() != HttpStatus.OK) {
+            throw new Exception("Error al obtener el registro de la métrica de proyecto del Blackboard. HttpStatusCode: ${resp.getStatusCode()}")
+        }
+
+        resp.json[0]
+    }
+
+    private def getProjectFromBlackboard(projectId) {
+        def resp = restClient.get("${gemsbbUrl}/projects/${projectId}")
+
+        if(resp.getStatusCode() != HttpStatus.OK) {
+            throw new Exception("Error al obtener el proyecto del Blackboard. HttpStatusCode: ${resp.getStatusCode()}")
+        }
+
+        resp.json
+    }
+
     private def getProject(projectsMap, projectId) {
         if(!projectsMap.containsKey(projectId)) {
-            def resp = restClient.get("${gemsbbUrl}/projects/${projectId}")
-
-            if(resp.getStatusCode() != HttpStatus.OK) {
-                throw new Exception("Error al obtener el proyecto del Blackboard. HttpStatusCode: ${resp.getStatusCode()}")
-            }
-
-            def project = resp.json
+            def project = getProjectFromBlackboard(projectId)
             projectsMap[projectId] = [
                 id: project.id,
                 name: project.name
@@ -117,9 +132,12 @@ class WorkedHoursMetricGeneratorService {
         response.json
     }
 
-    def generateProjectMetric(String projectId) {
+    def generateProjectMetric(String projectId, Integer month, Integer year) {
+        def metricName = 'Horas trabajadas en otros proyectos'
+        def project = getProjectFromBlackboard(projectId)
         def plans = getPlansFromBlackboard(projectId)
         def traces = getTracesFromBlackboard()
+        def metric = getMetricFromBloackboard(metricName, projectId, month, year) ?: new LinkedHashMap()
         def projectSummary = new LinkedHashMap()
         def memberSummary = new LinkedHashMap()
         def details = new LinkedHashMap()
@@ -171,13 +189,14 @@ class WorkedHoursMetricGeneratorService {
                 }
             }
         }
-        def metric = [
-            name: 'Horas trabajadas en otros proyectos',
-            year: 2016,
-            month: 9,
+
+        metric << [
+            name: metricName,
+            year: year,
+            month: month,
             project: [
-                id: '57cc59368acec62bf2f7d7ed',
-                name: 'Mi proyecto'
+                id: project.id,
+                name: project.name
             ],
             projectsSummary: projectSummary.collect() {
                 key, value ->

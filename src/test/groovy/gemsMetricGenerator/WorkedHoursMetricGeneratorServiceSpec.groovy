@@ -254,7 +254,6 @@ class WorkedHoursMetricGeneratorServiceSpec extends Specification {
         mockServer.when(
                 request('/plans')
                         .withMethod('GET')
-                        //.withQueryStringParameters(new Parameter('projectId', projectId))
         ).respond(response(getPlanResponse())
                 .withStatusCode(200)
                 .withHeaders(new Header('Content-Type', 'application/json; charset=utf-8'))
@@ -309,9 +308,21 @@ class WorkedHoursMetricGeneratorServiceSpec extends Specification {
                 .withHeaders(new Header('Content-Type', 'application/json; charset=utf-8'))
         )
 
-        when:
-        def metricResult = service.generateProjectMetric(projectId)
+        mockServer.when(
+            request('/projectMetrics')
+            .withQueryStringParameters(new Parameter('projectId', projectId),
+                new Parameter('month', '9'),
+                new Parameter('year', '2016'),
+                new Parameter('name', 'Horas trabajadas en otros proyectos')
+            )
+            .withMethod('GET')
+        ).respond(response('[]')
+                .withStatusCode(200)
+                .withHeaders(new Header('Content-Type', 'application/json; charset=utf-8'))
+        )
 
+        when:
+        def metricResult = service.generateProjectMetric(projectId, 9, 2016)
 
         then:
         metricResult.id != null
