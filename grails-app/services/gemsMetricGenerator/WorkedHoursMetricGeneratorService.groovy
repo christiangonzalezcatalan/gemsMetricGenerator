@@ -5,6 +5,8 @@ import org.grails.web.json.JSONObject
 import org.springframework.http.HttpStatus
 import grails.util.Holders
 import grails.plugins.rest.client.RestBuilder
+import static java.util.Calendar.YEAR
+import static java.util.Calendar.MONTH
 
 @Transactional
 class WorkedHoursMetricGeneratorService {
@@ -133,6 +135,8 @@ class WorkedHoursMetricGeneratorService {
     }
 
     def generateProjectMetric(String projectId, Integer month, Integer year) {
+        println "Cálculo de métrica para proyecto ${projectId} (${month+1}/${year})."
+
         def metricName = 'Horas trabajadas en otros proyectos'
         def project = getProjectFromBlackboard(projectId)
         def plans = getPlansFromBlackboard(projectId)
@@ -158,7 +162,13 @@ class WorkedHoursMetricGeneratorService {
                 ]
                 projectTrace.taskTraces.each {
                     def taskTrace = it
+
                     taskTrace.traceDetails.each {
+                        Date traceDate = Date.parse('yyyy-MM-dd', it.date)
+                        if(traceDate[YEAR] != year || traceDate[MONTH] != month) {
+                            return
+                        }
+
                         if(findPlanedTaskWithConflict(it, currentPlan).size() == 0) {
                             return
                         }

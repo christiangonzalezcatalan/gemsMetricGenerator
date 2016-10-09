@@ -15,6 +15,8 @@ dataSource:
 
 environments:
     development:
+        server:
+            port: 8085
         metricGenerator:
             gemsbbUrl: 'http://localhost:8080'
         dataSource:
@@ -51,6 +53,18 @@ environments:
                 defaultTransactionIsolation: 2 # TRANSACTION_READ_COMMITTED
 
 ---
+rabbitmq:
+    connections:
+      - name: main
+        host: localhost
+        username: guest
+        password: guest
+    queues:
+      - name: myQueue
+        exchange: myQueueExchange
+    exchanges:
+      - name: myQueueExchange
+        type: fanout
 ---
 grails:
     profile: web
