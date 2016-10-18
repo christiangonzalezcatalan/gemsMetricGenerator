@@ -8,7 +8,7 @@ class WorkedHoursConsumer {
     def workedHoursMetricGeneratorService
 
     static rabbitConfig = [
-        "queue": "myQueue"
+        "queue": "testWorkedHoursMetricGenerator"
     ]
 
     /**
@@ -20,7 +20,7 @@ class WorkedHoursConsumer {
      */
     def handleMessage(String projectId, MessageContext messageContext) {
         // TODO: Handle messages
-        println "Mensaje recibido para proyecto ${projectId}."
+        println "Mensaje recibido para proyecto ${projectId}. ${new Date()}"
         Date currentDate = new Date()
         workedHoursMetricGeneratorService.generateProjectMetric(projectId, currentDate[MONTH], currentDate[YEAR])
         println "Métrica para proyecto ${projectId} cargada."

@@ -59,12 +59,19 @@ rabbitmq:
         host: localhost
         username: guest
         password: guest
+    #queues:
+    #  - name: myQueue
+    #    exchange: myQueueExchange
+    #exchanges:
+    #  - name: myQueueExchange
+    #    type: fanout
     queues:
-      - name: myQueue
-        exchange: myQueueExchange
+      - name: testWorkedHoursMetricGenerator
+        exchange: testGemsBBExchange
+        binding: 'Plan.update'
     exchanges:
-      - name: myQueueExchange
-        type: fanout
+      - name: testGemsBBExchange
+        type: topic
 ---
 grails:
     profile: web
