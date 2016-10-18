@@ -59,12 +59,6 @@ rabbitmq:
         host: localhost
         username: guest
         password: guest
-    #queues:
-    #  - name: myQueue
-    #    exchange: myQueueExchange
-    #exchanges:
-    #  - name: myQueueExchange
-    #    type: fanout
     queues:
       - name: testWorkedHoursMetricGenerator
         exchange: testGemsBBExchange
