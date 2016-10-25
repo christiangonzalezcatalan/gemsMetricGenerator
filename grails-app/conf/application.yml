@@ -62,7 +62,8 @@ rabbitmq:
     queues:
       - name: testWorkedHoursMetricGenerator
         exchange: testGemsBBExchange
-        binding: 'Plan.update'
+        binding: '*.update'
+        #binding: 'Plan.update'
     exchanges:
       - name: testGemsBBExchange
         type: topic
