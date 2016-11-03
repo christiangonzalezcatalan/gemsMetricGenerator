@@ -54,6 +54,16 @@ class WorkedHoursMetricGeneratorService {
         resp.json
     }
 
+    private def getProjectsByOrganizationFromBlackboard(organizationId) {
+        def resp = restClient.get("${gemsbbUrl}/projects?toolName=Redmine&processName=NotAssignedWorkMetric&organizationId=${organizationId}")
+
+        if(resp.getStatusCode() != HttpStatus.OK) {
+            throw new Exception("Error al obtener el proyecto del Blackboard. HttpStatusCode: ${resp.getStatusCode()}")
+        }
+
+        resp.json
+    }
+
     private def getProject(projectsMap, projectId) {
         if(!projectsMap.containsKey(projectId)) {
             def project = getProjectFromBlackboard(projectId)
@@ -134,27 +144,26 @@ class WorkedHoursMetricGeneratorService {
         response.json
     }
 
-    def generateProjectMetric(String projectId, Integer month, Integer year) {
-        println "Cálculo de métrica para proyecto ${projectId} (${month+1}/${year})."
+    def generateMetrics(project, Integer month, Integer year) {
+        println "Cálculo de métrica para proyecto ${project.id} (${month+1}/${year})."
 
         def metricName = 'Horas trabajadas en otros proyectos'
-        def project = getProjectFromBlackboard(projectId)
-        def plans = getPlansFromBlackboard(projectId)
+        def plans = getPlansFromBlackboard(project.id)
         def traces = getTracesFromBlackboard()
-        def metric = getMetricFromBloackboard(metricName, projectId, month, year) ?: new LinkedHashMap()
+        def metric = getMetricFromBloackboard(metricName, project.id, month, year) ?: new LinkedHashMap()
         def projectSummary = new LinkedHashMap()
         def memberSummary = new LinkedHashMap()
         def details = new LinkedHashMap()
         def members = new LinkedHashMap()
         def projects = new LinkedHashMap()
 
-        def currentPlan = plans.find { it.project.id == projectId  }
+        def currentPlan = plans.find { it.project.id == project.id  }
         if(currentPlan == null) {
             throw new Exception('El plan del proyecto no se encuentra.')
         }
 
         traces.each {
-            if(it.project.id != projectId) {
+            if(it.project.id != project.id) {
                 def projectTrace = it
                 projectSummary[projectTrace.project.id] = [
                     metricData: [hours: 0],
@@ -228,5 +237,20 @@ class WorkedHoursMetricGeneratorService {
         ]
 
         saveBlackboardProjectMetric(metric)
+        println "Métrica de proyecto ${project.id} (${month+1}/${year}) cargada."
+    }
+
+    def generateProjectMetric(String projectId, Integer month, Integer year) {
+        def project = getProjectFromBlackboard(projectId)
+        generateMetrics(project, month, year)
+    }
+
+    def generateOrganizationMetric(String projectId, Integer month, Integer year) {
+        def project = getProjectFromBlackboard(projectId)
+        def projects = getProjectsByOrganizationFromBlackboard(project.organization.id)
+
+        projects.each() {
+            generateMetrics(it, month, year)
+        }
     }
 }

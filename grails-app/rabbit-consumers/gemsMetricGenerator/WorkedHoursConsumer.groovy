@@ -19,12 +19,15 @@ class WorkedHoursConsumer {
      * @return
      */
     def handleMessage(String projectId, MessageContext messageContext) {
-        if(messageContext.envelope.routingKey in ['Trace.update', 'Plan.update'])
+        println "Mensaje recibido para proyecto ${projectId}. ${new Date()} [${messageContext.envelope.routingKey}]"
+        Date currentDate = new Date()
+
+        if(messageContext.envelope.routingKey == 'Plan.update')
         {
-            println "Mensaje recibido para proyecto ${projectId}. ${new Date()}"
-            Date currentDate = new Date()
             workedHoursMetricGeneratorService.generateProjectMetric(projectId, currentDate[MONTH], currentDate[YEAR])
-            println "Métrica para proyecto ${projectId} cargada."
+        }
+        else if(messageContext.envelope.routingKey == 'Trace.update') {
+            workedHoursMetricGeneratorService.generateOrganizationMetric(projectId, currentDate[MONTH], currentDate[YEAR])
         }
     }
 
