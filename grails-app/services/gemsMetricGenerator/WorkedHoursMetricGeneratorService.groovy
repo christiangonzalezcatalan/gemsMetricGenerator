@@ -20,7 +20,7 @@ class WorkedHoursMetricGeneratorService {
             throw new Exception("Error al obtener el registro del plan del Blackboard. HttpStatusCode: ${resp.getStatusCode()}")
         }
 
-        resp.json
+        resp.json[0]
     }
 
     private def getTracesFromBlackboard() {
@@ -144,11 +144,131 @@ class WorkedHoursMetricGeneratorService {
         response.json
     }
 
+    private def generateOtherProjectHours(projectTrace,
+                    plan, 
+                    LinkedHashMap projectSummary, 
+                    LinkedHashMap memberSummary, 
+                    LinkedHashMap details,
+                    LinkedHashMap members,
+                    LinkedHashMap projects,
+                    Integer month,
+                    Integer year) {  
+        def currentPlan = getPlansFromBlackboard(projectTrace.project.id)
+
+        projectSummary[projectTrace.project.id] = [
+            metricData: [otherProjectHours: 0, otherProjectNotPlannedHours: 0],
+            project: getProject(projects, projectTrace.project.id)
+        ]
+
+        projectTrace.taskTraces.each {
+            def taskTrace = it
+
+            taskTrace.traceDetails.each {
+                Date traceDate = Date.parse('yyyy-MM-dd', it.date)
+                if(traceDate[YEAR] != year || traceDate[MONTH] != month) {
+                    return
+                }
+
+                // Si la traza (de otro proyecto) no coincide con el plan, no se continúa
+                if(findPlanedTaskWithConflict(it, plan).size() == 0) {
+                    return
+                }
+                
+                Boolean planned = true
+                // Si la tarea no fue planificada
+                if(findPlanedTaskWithConflict(it, currentPlan).size() == 0) {
+                    planned = false
+                }
+
+                if(!memberSummary.containsKey(it.member.id)) {
+                    memberSummary[it.member.id] = [
+                        metricData: [workedHours: 0, otherProjectHours: 0, otherProjectNotPlannedHours: 0],
+                        member: getMember(members, it.member.id)
+                    ]
+                }
+                def detailKey = [
+                    project: projectTrace.project.id,
+                    member: it.member.id,
+                    date: Date.parse('yyyy-MM-dd', it.date)
+                ]
+
+                if(!details.containsKey(
+                detailKey)) {
+                    details[detailKey] = [
+                        metricData: [workedHours: 0, otherProjectHours: 0, otherProjectNotPlannedHours: 0]
+                    ]
+                }
+
+                def plannedHours = planned ? it.hours : 0
+                projectSummary[projectTrace.project.id].metricData.otherProjectHours += plannedHours
+                memberSummary[it.member.id].metricData.otherProjectHours += plannedHours
+                details[detailKey].metricData.otherProjectHours += plannedHours
+
+                def unplannedHours = planned ? 0 : it.hours
+                projectSummary[projectTrace.project.id].metricData.otherProjectNotPlannedHours += unplannedHours
+                memberSummary[it.member.id].metricData.otherProjectNotPlannedHours += unplannedHours
+                details[detailKey].metricData.otherProjectNotPlannedHours += unplannedHours
+            }
+        }
+    }
+
+    private def generateProjectHours(projectTrace,
+                    currentPlan, 
+                    LinkedHashMap projectSummary, 
+                    LinkedHashMap memberSummary, 
+                    LinkedHashMap details,
+                    LinkedHashMap members,
+                    LinkedHashMap projects,
+                    Integer month, 
+                    Integer year) {  
+        projectSummary[projectTrace.project.id] = [
+            metricData: [workedHours: 0],
+            project: getProject(projects, projectTrace.project.id)
+        ]
+        projectTrace.taskTraces.each {
+            def taskTrace = it
+
+            taskTrace.traceDetails.each {
+                Date traceDate = Date.parse('yyyy-MM-dd', it.date)
+                if(traceDate[YEAR] != year || traceDate[MONTH] != month) {
+                    return
+                }
+
+                /*if(findPlanedTaskWithConflict(it, currentPlan).size() == 0) {
+                    return
+                }*/
+
+                if(!memberSummary.containsKey(it.member.id)) {
+                    memberSummary[it.member.id] = [
+                        metricData: [workedHours: 0, otherProjectHours: 0, otherProjectNotPlannedHours: 0],
+                        member: getMember(members, it.member.id)
+                    ]
+                }
+                def detailKey = [
+                    project: projectTrace.project.id,
+                    member: it.member.id,
+                    date: Date.parse('yyyy-MM-dd', it.date)
+                ]
+
+                if(!details.containsKey(
+                detailKey)) {
+                    details[detailKey] = [
+                        metricData: [workedHours: 0, otherProjectHours: 0, otherProjectNotPlannedHours: 0]
+                    ]
+                }
+
+                projectSummary[projectTrace.project.id].metricData.workedHours += it.hours
+                memberSummary[it.member.id].metricData.workedHours += it.hours
+                details[detailKey].metricData.workedHours += it.hours
+            }
+        }
+    }
+
     def generateMetrics(project, Integer month, Integer year) {
         println "Cálculo de métrica para proyecto ${project.id} (${month+1}/${year})."
 
         def metricName = 'Horas trabajadas en otros proyectos'
-        def plans = getPlansFromBlackboard(project.id)
+        def plan = getPlansFromBlackboard(project.id)
         def traces = getTracesFromBlackboard()
         def metric = getMetricFromBloackboard(metricName, project.id, month, year) ?: new LinkedHashMap()
         def projectSummary = new LinkedHashMap()
@@ -157,55 +277,12 @@ class WorkedHoursMetricGeneratorService {
         def members = new LinkedHashMap()
         def projects = new LinkedHashMap()
 
-        def currentPlan = plans.find { it.project.id == project.id  }
-        if(currentPlan == null) {
-            throw new Exception('El plan del proyecto no se encuentra.')
-        }
-
         traces.each {
             if(it.project.id != project.id) {
-                def projectTrace = it
-                projectSummary[projectTrace.project.id] = [
-                    metricData: [hours: 0],
-                    project: getProject(projects, projectTrace.project.id)
-                ]
-                projectTrace.taskTraces.each {
-                    def taskTrace = it
-
-                    taskTrace.traceDetails.each {
-                        Date traceDate = Date.parse('yyyy-MM-dd', it.date)
-                        if(traceDate[YEAR] != year || traceDate[MONTH] != month) {
-                            return
-                        }
-
-                        if(findPlanedTaskWithConflict(it, currentPlan).size() == 0) {
-                            return
-                        }
-
-                        if(!memberSummary.containsKey(it.member.id)) {
-                            memberSummary[it.member.id] = [
-                                metricData: [hours: 0],
-                                member: getMember(members, it.member.id)
-                            ]
-                        }
-                        def detailKey = [
-                            project: projectTrace.project.id,
-                            member: it.member.id,
-                            date: Date.parse('yyyy-MM-dd', it.date)
-                        ]
-
-                        if(!details.containsKey(
-                        detailKey)) {
-                            details[detailKey] = [
-                                metricData: [hours: 0]
-                            ]
-                        }
-
-                        projectSummary[projectTrace.project.id].metricData.hours += it.hours
-                        memberSummary[it.member.id].metricData.hours += it.hours
-                        details[detailKey].metricData.hours += it.hours
-                    }
-                }
+                generateOtherProjectHours(it, plan, projectSummary, memberSummary, details, members, projects, month, year)
+            }
+            else {
+                generateProjectHours(it, plan, projectSummary, memberSummary, details, members, projects, month, year)
             }
         }
 
@@ -236,8 +313,10 @@ class WorkedHoursMetricGeneratorService {
             }
         ]
 
+        println "Cargando métrica de proyecto ${project.id} (${month+1}/${year})."
         saveBlackboardProjectMetric(metric)
-        println "Métrica de proyecto ${project.id} (${month+1}/${year}) cargada."
+
+        metric
     }
 
     def generateProjectMetric(String projectId, Integer month, Integer year) {

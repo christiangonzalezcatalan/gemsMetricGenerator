@@ -47,8 +47,8 @@ class WorkedHoursMetricGeneratorServiceSpec extends Specification {
         "taskTraceId": "57d5fe9c8acec641a6c8d926",
         "traceDetails": [
           {
-            "date": "2016-09-11T06:00:00Z",
-            "hours": 5,
+            "date": "2016-10-11T06:00:00Z",
+            "hours": 1,
             "member": {
               "id": "57c3c4858acec662dab6dcf4"
             }
@@ -61,15 +61,15 @@ class WorkedHoursMetricGeneratorServiceSpec extends Specification {
         "taskTraceId": "57d5f5e28acec63dfc6b1317",
         "traceDetails": [
           {
-            "date": "2016-08-30T06:00:00Z",
-            "hours": 3,
+            "date": "2016-10-30T06:00:00Z",
+            "hours": 7,
             "member": {
               "id": "57c3c4858acec662dab6dcf4"
             }
           },
           {
-            "date": "2016-08-29T06:00:00Z",
-            "hours": 2,
+            "date": "2016-10-29T06:00:00Z",
+            "hours": 9,
             "member": {
               "id": "57c3c4858acec662dab6dcf4"
             }
@@ -85,12 +85,12 @@ class WorkedHoursMetricGeneratorServiceSpec extends Specification {
     },
     "taskTraces": [
       {
-        "name": "Revisión de código",
+        "name": "Revisión de arquitectura",
         "status": "ESTADO!",
         "taskTraceId": "57d5fe9c8acec641a6c8d927",
         "traceDetails": [
           {
-            "date": "2016-09-11T06:00:00Z",
+            "date": "2016-10-15T06:00:00Z",
             "hours": 5,
             "member": {
               "id": "57c3c4858acec662dab6dcf4"
@@ -104,14 +104,14 @@ class WorkedHoursMetricGeneratorServiceSpec extends Specification {
         "taskTraceId": "57d5f5e28acec63dfc6b1318",
         "traceDetails": [
           {
-            "date": "2016-08-30T06:00:00Z",
+            "date": "2016-10-11T06:00:00Z",
             "hours": 3,
             "member": {
               "id": "57c3c4858acec662dab6dcf4"
             }
           },
           {
-            "date": "2016-08-29T06:00:00Z",
+            "date": "2016-10-29T06:00:00Z",
             "hours": 2,
             "member": {
               "id": "57c3c4838acec662dab6dcf2"
@@ -134,45 +134,69 @@ class WorkedHoursMetricGeneratorServiceSpec extends Specification {
     "tasks": [
       {
         "contributors": [],
-        "dueDate": "2016-09-13T06:00:00Z",
+        "dueDate": "2016-10-13T06:00:00Z",
         "name": "Revisión de código",
         "responsible": {
           "id": "57c3c4838acec662dab6dcf2"
         },
-        "startDate": "2016-08-28T06:00:00Z",
+        "startDate": "2016-10-08T06:00:00Z",
         "status": "In Progress",
         "taskId": "57d0c86c8acec6725ee5accf"
       },
       {
         "contributors": [],
-        "dueDate": "2016-08-30T06:00:00Z",
+        "dueDate": "2016-10-30T06:00:00Z",
         "name": "Dashboard",
         "responsible": null,
-        "startDate": "2016-08-25T06:00:00Z",
+        "startDate": "2016-10-25T06:00:00Z",
         "status": "New",
         "taskId": "57d0c86c8acec6725ee5acd0"
       },
       {
         "contributors": [],
-        "dueDate": "2016-08-24T06:00:00Z",
+        "dueDate": "2016-10-24T06:00:00Z",
         "name": "Inyector plan Redmine",
         "responsible": {
           "id": "57c3c4858acec662dab6dcf4"
         },
-        "startDate": "2016-08-22T06:00:00Z",
+        "startDate": "2016-10-22T06:00:00Z",
         "status": "New",
         "taskId": "57d0c86c8acec6725ee5acd1"
       },
       {
         "contributors": [],
-        "dueDate": "2016-08-19T06:00:00Z",
+        "dueDate": "2016-10-19T06:00:00Z",
         "name": "API Blackboard",
         "responsible": {
           "id": "57c3c4858acec662dab6dcf4"
         },
-        "startDate": "2016-08-08T06:00:00Z",
+        "startDate": "2016-10-08T06:00:00Z",
         "status": "New",
         "taskId": "57d0c86c8acec6725ee5acd2"
+      }
+    ]
+    }
+    ]"""
+    }
+
+    private String getOtherPlanResponse(){
+        """[
+    {
+    "id": "57cf835f8acec65eba3b579a",
+    "project": {
+      "id": "57cc59368acec62bf2f7d7ee"
+    },
+    "tasks": [
+      {
+        "contributors": [],
+        "dueDate": "2016-10-24T06:00:00Z",
+        "name": "Revisión de arquitectura",
+        "responsible": {
+          "id": "57c3c4858acec662dab6dcf4"
+        },
+        "startDate": "2016-10-14T06:00:00Z",
+        "status": "New",
+        "taskId": "57d0c86c8acec6725ee5acd1"
       }
     ]
     }
@@ -250,11 +274,26 @@ class WorkedHoursMetricGeneratorServiceSpec extends Specification {
     void "test generate project metric"() {
         setup:
         def projectId = '57cc59368acec62bf2f7d7ed'
+        def otherProjectId = '57cc59368acec62bf2f7d7ee'
 
         mockServer.when(
                 request('/plans')
                         .withMethod('GET')
+                        .withQueryStringParameters(
+                                new Parameter('projectId', projectId)
+                        )
         ).respond(response(getPlanResponse())
+                .withStatusCode(200)
+                .withHeaders(new Header('Content-Type', 'application/json; charset=utf-8'))
+        )
+
+        mockServer.when(
+                request('/plans')
+                        .withMethod('GET')
+                        .withQueryStringParameters(
+                                new Parameter('projectId', otherProjectId)
+                        )
+        ).respond(response(getOtherPlanResponse())
                 .withStatusCode(200)
                 .withHeaders(new Header('Content-Type', 'application/json; charset=utf-8'))
         )
@@ -274,7 +313,7 @@ class WorkedHoursMetricGeneratorServiceSpec extends Specification {
                 .withStatusCode(200)
                 .withHeaders(new Header('Content-Type', 'application/json; charset=utf-8'))
         )
-        def otherProjectId = '57cc59368acec62bf2f7d7ee'
+        
         mockServer.when(
                 request("/projects/${otherProjectId}")
                         .withMethod('GET')
@@ -303,7 +342,7 @@ class WorkedHoursMetricGeneratorServiceSpec extends Specification {
         mockServer.when(
             request('/projectMetrics')
             .withMethod('POST')
-        ).respond(response(postProjectMetricResponse())
+        ).respond(response('')
                 .withStatusCode(200)
                 .withHeaders(new Header('Content-Type', 'application/json; charset=utf-8'))
         )
@@ -325,6 +364,10 @@ class WorkedHoursMetricGeneratorServiceSpec extends Specification {
         def metricResult = service.generateProjectMetric(projectId, 9, 2016)
 
         then:
-        metricResult.id != null
+        metricResult.name != null
+        metricResult.membersSummary[0].member.id == '57c3c4858acec662dab6dcf4'
+        metricResult.membersSummary[0].metricData.workedHours == 17
+        metricResult.membersSummary[0].metricData.otherProjectHours == 5
+        metricResult.membersSummary[0].metricData.otherProjectNotPlannedHours == 3
     }
 }
