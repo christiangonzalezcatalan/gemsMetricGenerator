@@ -182,7 +182,7 @@ class WorkedHoursMetricGeneratorService {
 
                 if(!memberSummary.containsKey(it.member.id)) {
                     memberSummary[it.member.id] = [
-                        metricData: [workedHours: 0, otherProjectHours: 0, otherProjectNotPlannedHours: 0],
+                        metricData: [workedHours: 0, notPlannedworkedHours: 0, otherProjectHours: 0, otherProjectNotPlannedHours: 0],
                         member: getMember(members, it.member.id)
                     ]
                 }
@@ -195,7 +195,7 @@ class WorkedHoursMetricGeneratorService {
                 if(!details.containsKey(
                 detailKey)) {
                     details[detailKey] = [
-                        metricData: [workedHours: 0, otherProjectHours: 0, otherProjectNotPlannedHours: 0]
+                        metricData: [workedHours: 0, notPlannedworkedHours: 0, otherProjectHours: 0, otherProjectNotPlannedHours: 0]
                     ]
                 }
 
@@ -212,6 +212,22 @@ class WorkedHoursMetricGeneratorService {
         }
     }
 
+    // Indica si la traza está de acuerdo al plan: match de tarea, usuario y tiempo.
+    private isPlanned(traceDetail, trace, plan) {
+        def p = plan.tasks.find() {
+            Date traceDate = Date.parse('yyyy-MM-dd', traceDetail.date)
+            Date startDate = Date.parse('yyyy-MM-dd', it.startDate)
+            Date dueDate = Date.parse('yyyy-MM-dd', it.dueDate)
+
+            it.responsible?.id == traceDetail.member.id &&
+            it.taskId == trace.taskTraceId &&
+            traceDate >= startDate &&
+            traceDate <= dueDate
+        }
+
+        p != null
+    }
+
     private def generateProjectHours(projectTrace,
                     currentPlan, 
                     LinkedHashMap projectSummary, 
@@ -222,7 +238,7 @@ class WorkedHoursMetricGeneratorService {
                     Integer month, 
                     Integer year) {  
         projectSummary[projectTrace.project.id] = [
-            metricData: [workedHours: 0],
+            metricData: [workedHours: 0, notPlannedworkedHours: 0],
             project: getProject(projects, projectTrace.project.id)
         ]
         projectTrace.taskTraces.each {
@@ -234,13 +250,9 @@ class WorkedHoursMetricGeneratorService {
                     return
                 }
 
-                /*if(findPlanedTaskWithConflict(it, currentPlan).size() == 0) {
-                    return
-                }*/
-
                 if(!memberSummary.containsKey(it.member.id)) {
                     memberSummary[it.member.id] = [
-                        metricData: [workedHours: 0, otherProjectHours: 0, otherProjectNotPlannedHours: 0],
+                        metricData: [workedHours: 0, notPlannedworkedHours: 0, otherProjectHours: 0, otherProjectNotPlannedHours: 0],
                         member: getMember(members, it.member.id)
                     ]
                 }
@@ -253,13 +265,21 @@ class WorkedHoursMetricGeneratorService {
                 if(!details.containsKey(
                 detailKey)) {
                     details[detailKey] = [
-                        metricData: [workedHours: 0, otherProjectHours: 0, otherProjectNotPlannedHours: 0]
+                        metricData: [workedHours: 0, notPlannedworkedHours:0, otherProjectHours: 0, otherProjectNotPlannedHours: 0]
                     ]
                 }
 
-                projectSummary[projectTrace.project.id].metricData.workedHours += it.hours
-                memberSummary[it.member.id].metricData.workedHours += it.hours
-                details[detailKey].metricData.workedHours += it.hours
+                def planned = isPlanned(it, taskTrace, currentPlan)
+
+                def plannedHours = planned ? it.hours : 0
+                projectSummary[projectTrace.project.id].metricData.workedHours += plannedHours
+                memberSummary[it.member.id].metricData.workedHours += plannedHours
+                details[detailKey].metricData.workedHours += plannedHours
+
+                def notPlannedHours = planned ? 0 : it.hours
+                projectSummary[projectTrace.project.id].metricData.notPlannedworkedHours += notPlannedHours
+                memberSummary[it.member.id].metricData.notPlannedworkedHours += notPlannedHours
+                details[detailKey].metricData.notPlannedworkedHours += notPlannedHours
             }
         }
     }

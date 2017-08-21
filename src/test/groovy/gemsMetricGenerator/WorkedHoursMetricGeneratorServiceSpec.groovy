@@ -42,9 +42,9 @@ class WorkedHoursMetricGeneratorServiceSpec extends Specification {
     },
     "taskTraces": [
       {
-        "name": null,
+        "name": "Revisión de código",
         "status": "ESTADO!",
-        "taskTraceId": "57d5fe9c8acec641a6c8d926",
+        "taskTraceId": "57d0c86c8acec6725ee5accf",
         "traceDetails": [
           {
             "date": "2016-10-11T06:00:00Z",
@@ -56,19 +56,19 @@ class WorkedHoursMetricGeneratorServiceSpec extends Specification {
         ]
       },
       {
-        "name": null,
+        "name": "API Blackboard",
         "status": "ESTADO!",
-        "taskTraceId": "57d5f5e28acec63dfc6b1317",
+        "taskTraceId": "57d0c86c8acec6725ee5acd2",
         "traceDetails": [
           {
-            "date": "2016-10-30T06:00:00Z",
+            "date": "2016-10-13T06:00:00Z",
             "hours": 7,
             "member": {
               "id": "57c3c4858acec662dab6dcf4"
             }
           },
           {
-            "date": "2016-10-29T06:00:00Z",
+            "date": "2016-10-12T06:00:00Z",
             "hours": 9,
             "member": {
               "id": "57c3c4858acec662dab6dcf4"
@@ -218,57 +218,6 @@ class WorkedHoursMetricGeneratorServiceSpec extends Specification {
     }"""
     }
 
-    private String postProjectMetricResponse() {
-        '''{
-    "id": "57df7b7a8acec6573c085e99",
-    "name":"Horas trabajadas en otros proyectos",
-    "year":2016,
-    "month":9,
-    "project": {
-        "id":"57cc59368acec62bf2f7d7ed",
-        "name":"Mi proyecto"
-    },
-    "projectsSummary":[
-        {
-            "project":{
-                "id":"57cc59368acec62bf2f7d7ee",
-                "name":"Proyecto 2"
-            },
-            "metricData":{
-                "hours":2
-            }
-        }
-    ],
-    "membersSummary":[
-        {
-            "member": {
-                "id":"57c3c4838acec662dab6dcf2",
-                "name":"Miembro 1",
-                "email":"miembro1@gems.cl"
-            },
-            "metricData":{
-                "hours":2
-            }
-        }
-    ],
-    "details":[
-        {
-            "project":{
-                "id":"57cc59368acec62bf2f7d7ee"
-            },
-            "member":{
-                "id":"57c3c4838acec662dab6dcf2"
-            },
-            "date":"2016-08-29T06:00:00Z",
-            "metricData":{
-                "hours":2
-            }
-        }
-    ]
-    }
-    '''
-    }
-
     private String
 
     void "test generate project metric"() {
@@ -366,7 +315,8 @@ class WorkedHoursMetricGeneratorServiceSpec extends Specification {
         then:
         metricResult.name != null
         metricResult.membersSummary[0].member.id == '57c3c4858acec662dab6dcf4'
-        metricResult.membersSummary[0].metricData.workedHours == 17
+        metricResult.membersSummary[0].metricData.workedHours == 16
+        metricResult.membersSummary[0].metricData.notPlannedworkedHours == 1
         metricResult.membersSummary[0].metricData.otherProjectHours == 5
         metricResult.membersSummary[0].metricData.otherProjectNotPlannedHours == 3
     }
